@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f0f0f0">
+  <title>粤语</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <main class="app-main">
+      <section class="view home-view" id="home-view">
+        <nav class="home-menu" aria-label="主菜单">
+          <button class="menu-card primary" type="button" data-home-action="start">
+            <span class="menu-copy"><strong>开始</strong></span>
+            <i aria-hidden="true">›</i>
+          </button>
+          <div class="menu-grid">
+            <button class="menu-card" type="button" data-home-action="route"><span>阶段</span></button>
+            <button class="menu-card" type="button" data-home-action="practice"><span>练习</span></button>
+            <button class="menu-card wide soft-accent" type="button" data-home-action="progress"><span>进度</span></button>
+            <button class="menu-card" type="button" data-home-action="test"><span>测试</span></button>
+            <button class="menu-card muted-accent" type="button" data-home-action="ask"><span>AI</span></button>
+            <button class="menu-card wide" type="button" data-home-action="settings"><span>设置</span></button>
+          </div>
+        </nav>
+      </section>
+
+      <section class="view route-view is-hidden" id="route-view" aria-labelledby="route-title">
+        <header class="nav-bar">
+          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
+          <h1 id="route-title">阶段</h1>
+          <span></span>
+        </header>
+        <div class="route-list" id="route-list"></div>
+      </section>
+
+      <section class="view progress-view is-hidden" id="progress-view" aria-labelledby="progress-title">
+        <header class="nav-bar">
+          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
+          <h1 id="progress-title">进度</h1>
+          <span></span>
+        </header>
+        <article class="profile-card">
+          <div class="profile-stat"><strong id="progress-learned">0</strong><small>词句</small></div>
+          <div class="profile-stat"><strong id="progress-score">0</strong><small>最高</small></div>
+        </article>
+        <section class="week-card" aria-label="最近七天">
+          <div class="week-grid" id="week-grid"></div>
+        </section>
+        <section class="metric-grid">
+          <div><strong id="progress-stage">1/7</strong><small>阶段</small></div>
+          <div><strong id="progress-review">0</strong><small>复习</small></div>
+          <div><strong id="progress-streak-detail">0</strong><small>连续</small></div>
+        </section>
+      </section>
+
+      <section class="view lesson-view is-hidden" id="lesson-view" aria-labelledby="phrase">
+        <header class="nav-bar lesson-nav">
+          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
+          <div class="lesson-meter"><i id="lesson-progress"></i></div>
+          <span id="lesson-count">1/20</span>
+        </header>
+
+        <article class="lesson-card" aria-live="polite">
+          <h1 class="phrase" id="phrase">你好</h1>
+          <p class="meaning is-concealed" id="meaning">你好</p>
+
+          <div class="audio-row">
+            <div class="audio-controls">
+              <button class="play-button" id="lesson-play" type="button" aria-label="播放"><span class="play-mark" aria-hidden="true"></span></button>
+              <button class="pause-button" id="lesson-pause" type="button" aria-label="暂停" disabled><span></span><span></span></button>
+            </div>
+            <div class="listen-steps" aria-label="播放顺序">
+              <span id="step-segmented">逐字</span><span id="step-connected">连读</span>
+            </div>
+          </div>
+
+          <div class="syllables" id="syllables" aria-label="单独点读"></div>
+
+          <div class="lesson-actions">
+            <button type="button" id="reveal-button">意思</button>
+            <button type="button" id="change-button">换句</button>
+          </div>
+        </article>
+
+        <nav class="lesson-switcher" aria-label="切换词句">
+          <button id="lesson-prev" type="button" aria-label="上一句">‹</button>
+          <button id="lesson-forward" type="button" aria-label="下一句">›</button>
+        </nav>
+
+        <button class="continue-button" id="lesson-next" type="button" disabled>继续</button>
+      </section>
+
+      <section class="view session-view is-hidden" id="session-view" aria-live="polite">
+        <header class="nav-bar session-nav">
+          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
+          <h1 id="session-title">练习</h1>
+          <span id="session-count">1</span>
+        </header>
+
+        <article class="question-card" id="question-card">
+          <p class="question-kind" id="question-kind">听力</p>
+          <div class="question-audio" id="question-audio">
+            <button class="play-button" id="session-play" type="button" aria-label="播放题目"><span class="play-mark" aria-hidden="true"></span></button>
+            <button class="pause-button" id="session-pause" type="button" aria-label="暂停题目" disabled><span></span><span></span></button>
+          </div>
+          <h2 class="question-text" id="question-text"></h2>
+          <div class="choice-list" id="choice-list"></div>
+        </article>
+      </section>
+
+      <section class="view tutor-view is-hidden" id="tutor-view" aria-labelledby="tutor-title">
+        <header class="nav-bar">
+          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
+          <h1 id="tutor-title">AI</h1>
+          <span></span>
+        </header>
+        <div class="quick-asks" id="quick-asks">
+          <button type="button" data-question="这句话什么时候用？">用法</button>
+          <button type="button" data-question="给我两个自然的替换说法。">替换</button>
+          <button type="button" data-question="帮我出一道只考听懂意思的小题。">出题</button>
+        </div>
+        <div class="tutor-answer" id="tutor-answer"></div>
+        <form class="ask-form" id="ask-form">
+          <input id="ask-input" maxlength="180" autocomplete="off" placeholder="输入问题">
+          <button type="submit">发送</button>
+        </form>
+      </section>
+
+      <section class="view settings-view is-hidden" id="settings-view" aria-labelledby="settings-title">
+        <header class="nav-bar">
+          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
+          <h1 id="settings-title">设置</h1>
+          <span></span>
+        </header>
+        <div class="settings-list">
+          <label class="setting-row"><span>粤拼</span><input id="jyutping-toggle" type="checkbox" checked></label>
+          <label class="setting-row"><span>音效</span><input id="sound-toggle" type="checkbox" checked></label>
+        </div>
+        <button class="reset-button" id="reset-progress" type="button">重置进度</button>
+      </section>
+    </main>
+  </div>
+
+  <div class="feedback-mark is-hidden" id="feedback-mark" aria-live="assertive"><span id="feedback-icon"></span></div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="vendor/ts-fsrs.umd.js"></script>
+  <script src="data.js"></script>
+  <script src="audio-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
