@@ -11,30 +11,43 @@
 <body>
   <div class="app-shell">
     <main class="app-main">
-      <section class="view home-view" id="home-view">
-        <nav class="home-menu" aria-label="主菜单">
-          <button class="menu-card primary" type="button" data-home-action="start">
-            <span class="menu-copy"><strong>开始</strong></span>
-            <i aria-hidden="true">›</i>
-          </button>
-          <div class="menu-grid">
-            <button class="menu-card" type="button" data-home-action="route"><span>阶段</span></button>
-            <button class="menu-card" type="button" data-home-action="practice"><span>练习</span></button>
-            <button class="menu-card wide soft-accent" type="button" data-home-action="progress"><span>进度</span></button>
-            <button class="menu-card" type="button" data-home-action="test"><span>测试</span></button>
-            <button class="menu-card muted-accent" type="button" data-home-action="ask"><span>AI</span></button>
-            <button class="menu-card wide" type="button" data-home-action="settings"><span>设置</span></button>
-          </div>
-        </nav>
+      <section class="view splash-view" id="splash-view">
+        <button class="splash-enter" id="splash-enter" type="button" aria-label="loading">
+          <img class="splash-logo" src="assets/brand-logo.png" alt="食咗饭未">
+          <strong>LOADING</strong>
+          <span class="splash-loader" aria-hidden="true"><i></i></span>
+        </button>
+      </section>
+
+      <section class="view home-view is-hidden" id="home-view">
+        <div class="home-stack">
+          <nav class="home-menu" aria-label="主菜单">
+            <button class="menu-card primary home-primary" type="button" data-home-action="start">
+              <span class="menu-copy"><strong>开始</strong><i class="start-arrow" aria-hidden="true">›</i></span>
+            </button>
+            <button class="menu-card soft-accent home-practice" type="button" data-home-action="practice">
+              <span class="menu-copy"><strong>练习</strong><i class="start-arrow" aria-hidden="true">›</i></span>
+            </button>
+          </nav>
+        </div>
       </section>
 
       <section class="view route-view is-hidden" id="route-view" aria-labelledby="route-title">
         <header class="nav-bar">
           <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
-          <h1 id="route-title">阶段</h1>
+          <h1 id="route-title">场景</h1>
           <span></span>
         </header>
         <div class="route-list" id="route-list"></div>
+      </section>
+
+      <section class="view favorites-view is-hidden" id="favorites-view" aria-labelledby="favorites-title">
+        <header class="nav-bar">
+          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
+          <h1 id="favorites-title">收藏</h1>
+          <span></span>
+        </header>
+        <div class="favorites-list" id="favorites-list" aria-live="polite"></div>
       </section>
 
       <section class="view progress-view is-hidden" id="progress-view" aria-labelledby="progress-title">
@@ -65,31 +78,26 @@
         </header>
 
         <article class="lesson-card" aria-live="polite">
+          <button class="favorite-toggle" id="favorite-toggle" type="button" aria-label="收藏" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3 10.7 19.1C5.4 14.3 2 11.2 2 7.4 2 4.3 4.4 2 7.5 2c1.7 0 3.4.8 4.5 2.1C13.1 2.8 14.8 2 16.5 2 19.6 2 22 4.3 22 7.4c0 3.8-3.4 6.9-8.7 11.7z"/></svg>
+          </button>
           <h1 class="phrase" id="phrase">你好</h1>
-          <p class="meaning is-concealed" id="meaning">你好</p>
+          <p class="meaning" id="meaning">你好</p>
 
           <div class="audio-row">
             <div class="audio-controls">
               <button class="play-button" id="lesson-play" type="button" aria-label="播放"><span class="play-mark" aria-hidden="true"></span></button>
               <button class="pause-button" id="lesson-pause" type="button" aria-label="暂停" disabled><span></span><span></span></button>
             </div>
-            <div class="listen-steps" aria-label="播放顺序">
-              <span id="step-segmented">逐字</span><span id="step-connected">连读</span>
-            </div>
           </div>
 
           <div class="syllables" id="syllables" aria-label="单独点读"></div>
 
-          <div class="lesson-actions">
-            <button type="button" id="reveal-button">意思</button>
-            <button type="button" id="change-button">换句</button>
-          </div>
+          <nav class="lesson-switcher" aria-label="切换词句">
+            <button id="lesson-prev" type="button" aria-label="上一句">‹</button>
+            <button id="lesson-forward" type="button" aria-label="下一句">›</button>
+          </nav>
         </article>
-
-        <nav class="lesson-switcher" aria-label="切换词句">
-          <button id="lesson-prev" type="button" aria-label="上一句">‹</button>
-          <button id="lesson-forward" type="button" aria-label="下一句">›</button>
-        </nav>
 
         <button class="continue-button" id="lesson-next" type="button" disabled>继续</button>
       </section>
@@ -112,24 +120,6 @@
         </article>
       </section>
 
-      <section class="view tutor-view is-hidden" id="tutor-view" aria-labelledby="tutor-title">
-        <header class="nav-bar">
-          <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
-          <h1 id="tutor-title">AI</h1>
-          <span></span>
-        </header>
-        <div class="quick-asks" id="quick-asks">
-          <button type="button" data-question="这句话什么时候用？">用法</button>
-          <button type="button" data-question="给我两个自然的替换说法。">替换</button>
-          <button type="button" data-question="帮我出一道只考听懂意思的小题。">出题</button>
-        </div>
-        <div class="tutor-answer" id="tutor-answer"></div>
-        <form class="ask-form" id="ask-form">
-          <input id="ask-input" maxlength="180" autocomplete="off" placeholder="输入问题">
-          <button type="submit">发送</button>
-        </form>
-      </section>
-
       <section class="view settings-view is-hidden" id="settings-view" aria-labelledby="settings-title">
         <header class="nav-bar">
           <button class="back-button" type="button" data-back-home aria-label="返回">‹</button>
@@ -143,6 +133,20 @@
         <button class="reset-button" id="reset-progress" type="button">重置进度</button>
       </section>
     </main>
+    <nav class="home-dock is-hidden" id="app-dock" aria-label="快捷菜单">
+      <button class="dock-button active" type="button" data-home-action="home" aria-label="首页" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2v8.1a.7.7 0 0 1-.7.7h-5.1v-6H9.3v6H4.2a.7.7 0 0 1-.7-.7z"/></svg>
+      </button>
+      <button class="dock-button favorite-dock" type="button" data-home-action="favorites" aria-label="收藏">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="heart-shape" d="M12 20.3 10.7 19.1C5.4 14.3 2 11.2 2 7.4 2 4.3 4.4 2 7.5 2c1.7 0 3.4.8 4.5 2.1C13.1 2.8 14.8 2 16.5 2 19.6 2 22 4.3 22 7.4c0 3.8-3.4 6.9-8.7 11.7z"/></svg>
+      </button>
+      <button class="dock-button" type="button" data-home-action="progress" aria-label="进度">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M8 3.5v4M16 3.5v4M4 10h16M8 14h3M8 17h6"/></svg>
+      </button>
+      <button class="dock-button" type="button" data-home-action="settings" aria-label="设置">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
+    </nav>
   </div>
 
   <div class="feedback-mark is-hidden" id="feedback-mark" aria-live="assertive"><span id="feedback-icon"></span></div>

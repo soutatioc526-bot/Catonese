@@ -2,7 +2,6 @@
   "use strict";
 
   const curriculum = window.YUE_CURRICULUM || [];
-  const transfers = window.YUE_TRANSFER_PATTERNS || {};
   const allPhrases = curriculum.flatMap((stage, dayIndex) => stage.phrases.map((phrase, phraseIndex) => ({ ...phrase, dayIndex, phraseIndex })));
   const STORAGE_KEY = "yue-life-lab-progress-v2";
   const OLD_STORAGE_KEY = "yue-life-lab-progress-v1";
@@ -19,15 +18,19 @@
 
   const els = {
     views: {
+      splash: document.getElementById("splash-view"),
       home: document.getElementById("home-view"),
       route: document.getElementById("route-view"),
+      favorites: document.getElementById("favorites-view"),
       progress: document.getElementById("progress-view"),
       lesson: document.getElementById("lesson-view"),
       session: document.getElementById("session-view"),
-      tutor: document.getElementById("tutor-view"),
       settings: document.getElementById("settings-view")
     },
+    splashEnter: document.getElementById("splash-enter"),
+    appDock: document.getElementById("app-dock"),
     routeList: document.getElementById("route-list"),
+    favoritesList: document.getElementById("favorites-list"),
     progressLearned: document.getElementById("progress-learned"),
     progressScore: document.getElementById("progress-score"),
     progressStage: document.getElementById("progress-stage"),
@@ -41,10 +44,7 @@
     syllables: document.getElementById("syllables"),
     lessonPlay: document.getElementById("lesson-play"),
     lessonPause: document.getElementById("lesson-pause"),
-    stepSegmented: document.getElementById("step-segmented"),
-    stepConnected: document.getElementById("step-connected"),
-    reveal: document.getElementById("reveal-button"),
-    change: document.getElementById("change-button"),
+    favoriteToggle: document.getElementById("favorite-toggle"),
     lessonPrev: document.getElementById("lesson-prev"),
     lessonForward: document.getElementById("lesson-forward"),
     lessonNext: document.getElementById("lesson-next"),
@@ -59,9 +59,6 @@
     choiceList: document.getElementById("choice-list"),
     feedback: document.getElementById("feedback-mark"),
     feedbackIcon: document.getElementById("feedback-icon"),
-    tutorAnswer: document.getElementById("tutor-answer"),
-    askForm: document.getElementById("ask-form"),
-    askInput: document.getElementById("ask-input"),
     jyutpingToggle: document.getElementById("jyutping-toggle"),
     soundToggle: document.getElementById("sound-toggle"),
     toast: document.getElementById("toast")
@@ -69,7 +66,7 @@
 
   const defaults = {
     learned: {}, listen: {}, passed: {}, bestScores: {}, cards: {}, wrong: {},
-    activity: {}, unlockedDay: 0, lastDay: 0, lastPhrase: 0
+    favorites: {}, activity: {}, unlockedDay: 0, lastDay: 0, lastPhrase: 0
   };
 
   function safeParse(value, fallback) {
@@ -92,16 +89,14 @@
   }
 
   const progress = migrateProgress();
+  if (!progress.favorites || typeof progress.favorites !== "object") progress.favorites = {};
   progress.unlockedDay = clamp(Number(progress.unlockedDay) || 0, 0, Math.max(0, curriculum.length - 1));
   const savedSettings = safeParse(localStorage.getItem(SETTINGS_KEY), { showJyutping: true, soundEffects: true });
 
   const state = {
-    view: "home",
+    view: "splash",
     dayIndex: clamp(progress.lastDay || 0, 0, progress.unlockedDay),
     phraseIndex: 0,
-    displayPhrase: null,
-    variantIndex: 0,
-    meaningVisible: false,
     showJyutping: savedSettings.showJyutping !== false,
     soundEffects: savedSettings.soundEffects !== false,
     segmentedDone: false,
@@ -123,6 +118,7 @@
   const audioBufferCache = new Map();
   const fallbackAudio = new Audio();
   fallbackAudio.preload = "auto";
+  let splashTimer = 0;
 
   const audioControls = {
     lesson: { play: els.lessonPlay, pause: els.lessonPause },
@@ -143,13 +139,21 @@
 
   function switchView(name) {
     Object.entries(els.views).forEach(([key, node]) => node.classList.toggle("is-hidden", key !== name));
+    els.appDock.classList.toggle("is-hidden", name === "splash");
+    const dockState = { home: "home", favorites: "favorites", progress: "progress", settings: "settings" }[name] || "";
+    els.appDock.querySelectorAll(".dock-button").forEach((button) => {
+      const active = button.dataset.homeAction === dockState;
+      button.classList.toggle("active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
     state.view = name;
     hideFeedback();
   }
 
   function currentStage() { return curriculum[state.dayIndex]; }
   function currentBasePhrase() { return currentStage().phrases[state.phraseIndex]; }
-  function displayedPhrase() { return state.displayPhrase || currentBasePhrase(); }
+  function displayedPhrase() { return currentBasePhrase(); }
   function learnedCount(index) { return curriculum[index].phrases.filter((phrase) => progress.learned[phrase.id]).length; }
   function isStageLearned(index) { return learnedCount(index) === curriculum[index].phrases.length; }
   function tokensOf(phrase) { return (phrase?.jyutping || "").match(/[a-z]+[1-6]/g) || []; }
@@ -180,7 +184,17 @@
       return due || (progress.wrong[phrase.id] || 0) > 0;
     }).length;
   }
+
+  function showSplash() {
+    stopAudio();
+    switchView("splash");
+    document.title = "粤语";
+    window.clearTimeout(splashTimer);
+    splashTimer = window.setTimeout(showHome, 1450);
+  }
+
   function showHome() {
+    window.clearTimeout(splashTimer);
     stopAudio();
     switchView("home");
     state.dayIndex = clamp(progress.lastDay || 0, 0, progress.unlockedDay);
@@ -197,16 +211,59 @@
     els.routeList.innerHTML = "";
     curriculum.forEach((stage, index) => {
       const locked = index > progress.unlockedDay;
-      const count = learnedCount(index);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "route-item";
       if (index === state.dayIndex && !locked) button.classList.add("current");
-      if (progress.passed[index]) button.classList.add("done");
       button.disabled = locked;
-      button.innerHTML = `<span class="stage-number">${index + 1}</span><span><strong>${stage.place}</strong><small>${stage.moment}</small></span><span class="route-state">${locked ? "锁定" : `${count}/${stage.phrases.length}`}</span>`;
+      button.setAttribute("aria-label", `${index + 1} ${stage.place}${locked ? "，未解锁" : ""}`);
+      button.innerHTML = `<span class="stage-number">${String(index + 1).padStart(2, "0")}</span><strong>${stage.place}</strong>`;
       button.addEventListener("click", () => openStage(index));
       els.routeList.appendChild(button);
+    });
+  }
+
+  function showFavorites() {
+    stopAudio();
+    switchView("favorites");
+    renderFavorites();
+  }
+
+  function renderFavorites() {
+    els.favoritesList.innerHTML = "";
+    const favorites = allPhrases.filter((phrase) => progress.favorites[phrase.id]);
+    if (!favorites.length) {
+      const empty = document.createElement("p");
+      empty.className = "favorites-empty";
+      empty.textContent = "暂无收藏";
+      els.favoritesList.appendChild(empty);
+      return;
+    }
+    favorites.forEach((phrase) => {
+      const item = document.createElement("article");
+      item.className = "favorite-item";
+      const word = document.createElement("button");
+      word.type = "button";
+      word.className = "favorite-word";
+      word.innerHTML = `<strong>${phrase.hanzi}</strong>${state.showJyutping ? `<span>${phrase.jyutping}</span>` : ""}<small>${phrase.meaning}</small>`;
+      word.addEventListener("click", () => {
+        state.dayIndex = phrase.dayIndex;
+        state.phraseIndex = phrase.phraseIndex;
+        persist();
+        startLesson();
+      });
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "favorite-remove";
+      remove.setAttribute("aria-label", `取消收藏 ${phrase.hanzi}`);
+      remove.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3 10.7 19.1C5.4 14.3 2 11.2 2 7.4 2 4.3 4.4 2 7.5 2c1.7 0 3.4.8 4.5 2.1C13.1 2.8 14.8 2 16.5 2 19.6 2 22 4.3 22 7.4c0 3.8-3.4 6.9-8.7 11.7z"/></svg>`;
+      remove.addEventListener("click", () => {
+        delete progress.favorites[phrase.id];
+        persist();
+        renderFavorites();
+      });
+      item.append(word, remove);
+      els.favoritesList.appendChild(item);
     });
   }
 
@@ -242,8 +299,7 @@
     const first = curriculum[index].phrases.findIndex((phrase) => !progress.learned[phrase.id]);
     state.phraseIndex = first < 0 ? 0 : first;
     persist();
-    if (first < 0) startTest(index);
-    else startLesson();
+    startLesson();
   }
 
   function startLesson() {
@@ -254,9 +310,6 @@
   }
 
   function resetLessonPhrase() {
-    state.displayPhrase = null;
-    state.variantIndex = 0;
-    state.meaningVisible = false;
     state.segmentedDone = false;
     state.connectedDone = false;
     state.nextAudioMode = "segmented";
@@ -269,8 +322,8 @@
     els.lessonProgress.style.width = `${((state.phraseIndex + 1) / total) * 100}%`;
     els.phrase.textContent = phrase.hanzi;
     els.meaning.textContent = phrase.meaning;
-    els.meaning.classList.toggle("is-concealed", !state.meaningVisible);
     renderSyllables(phrase);
+    renderFavoriteToggle(phrase);
     updateListenSteps();
     els.lessonPrev.disabled = state.phraseIndex === 0;
     els.lessonForward.disabled = state.phraseIndex === total - 1;
@@ -294,29 +347,22 @@
   }
 
   function updateListenSteps() {
-    els.stepSegmented.className = state.segmentedDone ? "done" : state.nextAudioMode === "segmented" ? "active" : "";
-    els.stepConnected.className = state.connectedDone ? "done" : state.segmentedDone && !state.connectedDone ? "active" : "";
     els.lessonNext.disabled = !(state.segmentedDone && state.connectedDone);
   }
 
-  function toggleMeaning() {
-    state.meaningVisible = !state.meaningVisible;
-    els.meaning.classList.toggle("is-concealed", !state.meaningVisible);
+  function renderFavoriteToggle(phrase) {
+    const active = Boolean(progress.favorites[phrase.id]);
+    els.favoriteToggle.classList.toggle("active", active);
+    els.favoriteToggle.setAttribute("aria-pressed", String(active));
+    els.favoriteToggle.setAttribute("aria-label", active ? "取消收藏" : "收藏");
   }
 
-  function changeSentence() {
-    stopAudio();
-    const base = currentBasePhrase();
-    const explicit = transfers[base.id] || [];
-    const alternatives = explicit.length ? explicit : currentStage().phrases.filter((phrase) => phrase.id !== base.id);
-    const variants = [base, ...alternatives];
-    state.variantIndex = (state.variantIndex + 1) % variants.length;
-    state.displayPhrase = variants[state.variantIndex];
-    state.meaningVisible = false;
-    state.segmentedDone = false;
-    state.connectedDone = false;
-    state.nextAudioMode = "segmented";
-    renderLesson();
+  function toggleFavorite() {
+    const phrase = currentBasePhrase();
+    if (progress.favorites[phrase.id]) delete progress.favorites[phrase.id];
+    else progress.favorites[phrase.id] = true;
+    persist();
+    renderFavoriteToggle(phrase);
   }
 
   function navigateLesson(delta) {
@@ -775,29 +821,9 @@
     return result;
   }
 
-  function showTutor() {
-    stopAudio();
-    switchView("tutor");
-    els.askInput.focus();
-  }
-
   function showSettings() {
     stopAudio();
     switchView("settings");
-  }
-
-  function localTutorAnswer(question) {
-    const phrase = displayedPhrase() || currentBasePhrase();
-    const variants = transfers[phrase.id] || [];
-    if (/换|替换|说法/.test(question) && variants.length) return variants.map((item) => `${item.hanzi}\n${item.jyutping}`).join("\n\n");
-    if (/题|测试/.test(question)) return `${phrase.hanzi}\n${phrase.meaning}`;
-    return `${phrase.hanzi}\n${phrase.jyutping}\n${phrase.meaning}`;
-  }
-
-  function askTutor(question) {
-    if (!question.trim()) return;
-    els.tutorAnswer.classList.remove("loading");
-    els.tutorAnswer.textContent = localTutorAnswer(question.trim());
   }
 
   let toastTimer;
@@ -813,21 +839,21 @@
     if (button && !button.disabled) playSfx("tap");
   });
 
-  document.querySelector(".home-menu").addEventListener("click", (event) => {
+  els.splashEnter.addEventListener("click", () => {
+    ensureAudioContext().catch(() => {});
+    showHome();
+  });
+
+  document.querySelector(".app-shell").addEventListener("click", (event) => {
     const button = event.target.closest("button[data-home-action]");
     if (!button) return;
     ensureAudioContext().catch(() => {});
     const action = button.dataset.homeAction;
-    if (action === "start") {
-      const first = currentStage().phrases.findIndex((phrase) => !progress.learned[phrase.id]);
-      state.phraseIndex = first < 0 ? 0 : first;
-      if (first < 0) startTest(state.dayIndex);
-      else startLesson();
-    } else if (action === "route") showRoute();
+    if (action === "home") showHome();
+    else if (action === "start") showRoute();
+    else if (action === "favorites") showFavorites();
     else if (action === "progress") showProgress();
     else if (action === "practice") startPractice();
-    else if (action === "test") startTest(state.dayIndex);
-    else if (action === "ask") showTutor();
     else if (action === "settings") showSettings();
   });
 
@@ -836,21 +862,10 @@
   els.lessonPause.addEventListener("click", () => pauseAudio("lesson"));
   els.sessionPlay.addEventListener("click", () => playSequence(state.session?.current?.phrase, "connected", "session"));
   els.sessionPause.addEventListener("click", () => pauseAudio("session"));
-  els.reveal.addEventListener("click", toggleMeaning);
-  els.change.addEventListener("click", changeSentence);
+  els.favoriteToggle.addEventListener("click", toggleFavorite);
   els.lessonPrev.addEventListener("click", () => navigateLesson(-1));
   els.lessonForward.addEventListener("click", () => navigateLesson(1));
   els.lessonNext.addEventListener("click", completeLessonPhrase);
-  document.getElementById("quick-asks").addEventListener("click", (event) => {
-    const button = event.target.closest("button[data-question]");
-    if (button) askTutor(button.dataset.question);
-  });
-  els.askForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const question = els.askInput.value;
-    els.askInput.value = "";
-    askTutor(question);
-  });
   els.jyutpingToggle.addEventListener("change", () => {
     state.showJyutping = els.jyutpingToggle.checked;
     persist();
@@ -867,5 +882,5 @@
   });
 
   persist();
-  showHome();
+  showSplash();
 })();
