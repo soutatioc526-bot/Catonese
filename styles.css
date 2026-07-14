@@ -326,6 +326,21 @@ button:disabled { cursor: not-allowed; }
 .pause-button:active { background: color-mix(in srgb, var(--paper) 84%, var(--ink)); }
 .pause-button:disabled { opacity: .35; }
 .pause-button span { width: 4px; height: 15px; border-radius: 2px; background: var(--text); }
+.speed-options { display: flex; align-items: center; gap: 6px; margin-left: 2px; }
+.speed-options button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+}
+.speed-options button[aria-pressed="true"] { background: var(--secondary); color: var(--paper); }
+.speed-options button:active { transform: scale(.96); }
 
 .syllables { min-height: 44px; margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
 .syllable {

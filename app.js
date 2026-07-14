@@ -44,6 +44,7 @@
     syllables: document.getElementById("syllables"),
     lessonPlay: document.getElementById("lesson-play"),
     lessonPause: document.getElementById("lesson-pause"),
+    lessonSpeedButtons: [...document.querySelectorAll("[data-lesson-speed]")],
     favoriteToggle: document.getElementById("favorite-toggle"),
     lessonPrev: document.getElementById("lesson-prev"),
     lessonForward: document.getElementById("lesson-forward"),
@@ -91,7 +92,8 @@
   const progress = migrateProgress();
   if (!progress.favorites || typeof progress.favorites !== "object") progress.favorites = {};
   progress.unlockedDay = clamp(Number(progress.unlockedDay) || 0, 0, Math.max(0, curriculum.length - 1));
-  const savedSettings = safeParse(localStorage.getItem(SETTINGS_KEY), { showJyutping: true, soundEffects: true });
+  const savedSettings = safeParse(localStorage.getItem(SETTINGS_KEY), { showJyutping: true, soundEffects: true, lessonSpeed: 1 });
+  const savedLessonSpeed = [1, 5, 10].includes(Number(savedSettings.lessonSpeed)) ? Number(savedSettings.lessonSpeed) : 1;
 
   const state = {
     view: "splash",
@@ -99,6 +101,7 @@
     phraseIndex: 0,
     showJyutping: savedSettings.showJyutping !== false,
     soundEffects: savedSettings.soundEffects !== false,
+    lessonSpeed: savedLessonSpeed,
     segmentedDone: false,
     connectedDone: false,
     nextAudioMode: "segmented",
@@ -134,7 +137,18 @@
     progress.lastDay = state.dayIndex;
     progress.lastPhrase = state.phraseIndex;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showJyutping: state.showJyutping, soundEffects: state.soundEffects }));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      showJyutping: state.showJyutping,
+      soundEffects: state.soundEffects,
+      lessonSpeed: state.lessonSpeed
+    }));
+  }
+
+  function updateLessonSpeedButtons() {
+    els.lessonSpeedButtons.forEach((button) => {
+      const active = Number(button.dataset.lessonSpeed) === state.lessonSpeed;
+      button.setAttribute("aria-pressed", String(active));
+    });
   }
 
   function switchView(name) {
@@ -477,7 +491,8 @@
   }
 
   function scheduleWebAudio(buffers, mode, owner, controls, runId, onComplete) {
-    const rate = mode === "connected" ? 1.12 : .94;
+    const speed = owner === "lesson" ? state.lessonSpeed : 1;
+    const rate = (mode === "connected" ? 1.12 : .94) * speed;
     let cursor = audioContext.currentTime + .05;
     state.audioOwner = owner;
     state.audioBusy = true;
@@ -497,7 +512,7 @@
         if (runId !== state.audioRun) return;
         finishAudio(owner, controls, onComplete);
       };
-      cursor += mode === "connected" ? Math.max(.08, duration - .035) : duration + .18;
+      cursor += mode === "connected" ? Math.max(.012, duration - (.035 / speed)) : duration + (.18 / speed);
     });
     monitorSyllable(owner, runId);
   }
@@ -551,6 +566,7 @@
       if (runId !== state.audioRun) return;
       const source = context.createBufferSource();
       source.buffer = buffer;
+      source.playbackRate.value = state.lessonSpeed;
       source.connect(context.destination);
       state.audioOwner = "lesson";
       state.audioBusy = true;
@@ -860,6 +876,15 @@
   document.querySelectorAll("[data-back-home]").forEach((button) => button.addEventListener("click", showHome));
   els.lessonPlay.addEventListener("click", playLessonAudio);
   els.lessonPause.addEventListener("click", () => pauseAudio("lesson"));
+  els.lessonSpeedButtons.forEach((button) => button.addEventListener("click", () => {
+    const requestedSpeed = Number(button.dataset.lessonSpeed);
+    const wasPlaying = state.audioOwner === "lesson" && state.audioBusy && !state.audioPaused;
+    state.lessonSpeed = state.lessonSpeed === requestedSpeed ? 1 : requestedSpeed;
+    updateLessonSpeedButtons();
+    persist();
+    if (state.audioOwner === "lesson" && state.audioBusy) stopAudio();
+    if (wasPlaying) playLessonAudio();
+  }));
   els.sessionPlay.addEventListener("click", () => playSequence(state.session?.current?.phrase, "connected", "session"));
   els.sessionPause.addEventListener("click", () => pauseAudio("session"));
   els.favoriteToggle.addEventListener("click", toggleFavorite);
@@ -881,6 +906,7 @@
     location.reload();
   });
 
+  updateLessonSpeedButtons();
   persist();
   showSplash();
 })();
